@@ -170,4 +170,4 @@ export interface FinancialTransaction {
   documentNumber?: string; // Nota Fiscal
 }
 
-export type ViewState = 'dashboard' | 'fleet' | 'fuel' | 'maintenance' | 'tires' | 'reports' | 'employees' | 'settings' | 'history' | 'telemetry';
+export type ViewState = 'dashboard' | 'fleet' | 'fuel' | 'maintenance' | 'tires' | 'reports' | 'employees' | 'settings' | 'history' | 'telemetry' | 'gamification' | 'documents' | 'techdocs';
