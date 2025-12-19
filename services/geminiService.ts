@@ -1,15 +1,12 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { Vehicle, FuelLog, MaintenanceOrder } from "../types";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Helper to format data for context
 const formatContext = (vehicles: Vehicle[], fuelLogs: FuelLog[], maintenance: MaintenanceOrder[]) => {
   return JSON.stringify({
     veiculos: vehicles.map(v => ({ modelo: v.model, placa: v.plate, status: v.status, km: v.mileage, motorista: v.driver })),
-    combustivel_recente: fuelLogs.slice(0, 10), // Limit context size
+    combustivel_recente: fuelLogs.slice(0, 10),
     manutencoes_recentes: maintenance.slice(0, 10)
   });
 };
@@ -19,8 +16,6 @@ export const generateFleetAnalysis = async (
   fuelLogs: FuelLog[],
   maintenance: MaintenanceOrder[]
 ): Promise<string> => {
-  if (!apiKey) return "A chave de API não foi configurada.";
-
   const prompt = `
     Atue como Analista de Frotas Sênior. Analise estes dados:
     ${formatContext(vehicles, fuelLogs, maintenance)}
@@ -30,13 +25,13 @@ export const generateFleetAnalysis = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
     });
-    return response.text || "Sem resposta.";
+    return response.text || "Sem resposta da análise.";
   } catch (error) {
     console.error("Erro AI:", error);
-    return "Erro de conexão com a IA.";
+    return "Erro ao processar análise da frota.";
   }
 };
 
@@ -46,28 +41,25 @@ export const askFleetAssistant = async (
   fuelLogs: FuelLog[],
   maintenance: MaintenanceOrder[]
 ): Promise<string> => {
-  if (!apiKey) return "Configure a API_KEY para usar o chat.";
-
   const context = formatContext(vehicles, fuelLogs, maintenance);
 
   const prompt = `
     Você é o assistente virtual inteligente da FCMO LOG TECH.
-    Você tem acesso aos seguintes dados da frota em tempo real (JSON):
+    Você tem acesso aos seguintes dados da frota em tempo real:
     ${context}
 
-    O usuário (Gestor da Frota) perguntou: "${question}"
+    O usuário perguntou: "${question}"
 
-    Responda de forma direta, profissional e baseada APENAS nos dados fornecidos acima. Se não souber, diga que não há dados suficientes.
-    Use formatação Markdown para deixar a resposta bonita (negrito em valores, listas, etc).
+    Responda de forma direta, profissional e baseada nos dados. Se não houver dados sobre algo, informe.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
     });
     return response.text || "Não entendi a pergunta.";
   } catch (error) {
-    return "Erro ao processar pergunta.";
+    return "Erro ao processar pergunta via IA.";
   }
 };
