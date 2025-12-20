@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { LayoutDashboard, Truck, Droplets, Wrench, Disc, Settings, LogOut, History, FileBarChart, Users, Trophy, FileText, BookOpen } from 'lucide-react';
 import { ViewState, User } from '../types';
@@ -22,7 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, onL
     (p.includes('MANAGE_MAINTENANCE') || p.includes('APPROVE_MAINTENANCE')) && { id: 'maintenance', label: 'Manutenção', icon: Wrench },
     p.includes('MANAGE_TIRES') && { id: 'tires', label: 'Pneus', icon: Disc },
     { id: 'documents', label: 'Documentação', icon: FileText },
-    p.includes('VIEW_DASHBOARD') && { id: 'reports', label: 'Análise IA', icon: FileBarChart },
+    p.includes('VIEW_DASHBOARD') && { id: 'reports', label: 'Relatórios', icon: FileBarChart },
     p.includes('VIEW_HISTORY') && { id: 'history', label: 'Audit Log', icon: History },
   ].filter(Boolean);
 
