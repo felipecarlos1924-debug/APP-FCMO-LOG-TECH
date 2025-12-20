@@ -1,6 +1,6 @@
 {
   "name": "FCMO LOG TECH",
-  "description": "Plataforma completa de gestão de frotas com inteligência artificial para otimização logística e redução de custos.",
+  "description": "Plataforma completa de gestão de frotas para otimização logística, monitoramento em tempo real e redução de custos.",
   "requestFramePermissions": [
     "camera",
     "geolocation"

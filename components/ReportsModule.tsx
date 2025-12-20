@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Vehicle, FuelLog, MaintenanceOrder, FinancialTransaction } from '../types';
 import { MOCK_FINANCIAL } from '../constants';
-import { FileText, BarChart2, DollarSign, User, TrendingUp, TrendingDown, CreditCard } from 'lucide-react';
+import { FileText, BarChart2, DollarSign } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Legend, ComposedChart, Line } from 'recharts';
 
 interface ReportsModuleProps {
@@ -12,7 +12,7 @@ interface ReportsModuleProps {
 
 export const ReportsModule: React.FC<ReportsModuleProps> = ({ vehicles, fuelLogs, maintenance }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'financial'>('general');
-  const [transactions] = useState<FinancialTransaction[]>(MOCK_FINANCIAL);
+  const transactions = MOCK_FINANCIAL;
 
   // --- DATA PREPARATION ---
   const costByVehicle = vehicles.map(v => {
@@ -44,10 +44,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({ vehicles, fuelLogs
 
   return (
     <div className="h-full flex flex-col animate-fade-in space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center shrink-0">
         <div>
-           <h2 className="text-2xl font-bold text-slate-800">Relatórios</h2>
-           <p className="text-slate-500">Métricas consolidadas da operação.</p>
+           <h2 className="text-2xl font-bold text-slate-800">Relatórios de Performance</h2>
+           <p className="text-slate-500">Métricas analíticas baseadas no histórico da frota.</p>
         </div>
         <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
            <button 
@@ -65,70 +65,76 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({ vehicles, fuelLogs
         </div>
       </div>
 
-      {activeTab === 'general' && (
-         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-96">
-               <h3 className="font-bold text-slate-800 mb-6">Custos por Veículo</h3>
-               <ResponsiveContainer width="100%" height="100%">
-                 <BarChart data={costByVehicle} layout="vertical" margin={{ left: 20 }}>
-                   <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                   <XAxis type="number" hide />
-                   <YAxis dataKey="name" type="category" width={80} tick={{fontSize: 12, fontWeight: 'bold'}} />
-                   <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '8px', border:'none', boxShadow:'0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                   <Bar dataKey="total" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20}>
-                      {costByVehicle.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={index === 0 ? '#ef4444' : '#3b82f6'} />
-                      ))}
-                   </Bar>
-                 </BarChart>
-               </ResponsiveContainer>
-            </div>
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-96">
-               <h3 className="font-bold text-slate-800 mb-6">Disponibilidade</h3>
-               <ResponsiveContainer width="100%" height="100%">
-                  <RePieChart>
-                    <Pie data={statusDistribution} cx="50%" cy="50%" innerRadius={80} outerRadius={100} paddingAngle={5} dataKey="value">
-                      {statusDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                    </Pie>
-                    <Tooltip />
-                    <Legend verticalAlign="bottom" height={36}/>
-                  </RePieChart>
-               </ResponsiveContainer>
-            </div>
-         </div>
-      )}
+      <div className="flex-1 overflow-y-auto pr-2">
+        {activeTab === 'general' && (
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in pb-6">
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-96">
+                 <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <BarChart2 size={18} className="text-blue-500" />
+                    Top 5 Custos por Placa
+                 </h3>
+                 <ResponsiveContainer width="100%" height="100%">
+                   <BarChart data={costByVehicle} layout="vertical" margin={{ left: 20 }}>
+                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                     <XAxis type="number" hide />
+                     <YAxis dataKey="name" type="category" width={80} tick={{fontSize: 12, fontWeight: 'bold'}} />
+                     <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '8px', border:'none', boxShadow:'0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                     <Bar dataKey="total" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20}>
+                        {costByVehicle.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={index === 0 ? '#ef4444' : '#3b82f6'} />
+                        ))}
+                     </Bar>
+                   </BarChart>
+                 </ResponsiveContainer>
+              </div>
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-96">
+                 <h3 className="font-bold text-slate-800 mb-6">Disponibilidade da Frota</h3>
+                 <ResponsiveContainer width="100%" height="100%">
+                    <RePieChart>
+                      <Pie data={statusDistribution} cx="50%" cy="50%" innerRadius={80} outerRadius={100} paddingAngle={5} dataKey="value">
+                        {statusDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                      </Pie>
+                      <Tooltip />
+                      <Legend verticalAlign="bottom" height={36}/>
+                    </RePieChart>
+                 </ResponsiveContainer>
+              </div>
+           </div>
+        )}
 
-      {activeTab === 'financial' && (
-         <div className="animate-fade-in space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-               <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
-                  <p className="text-slate-500 text-xs font-bold uppercase mb-1">Receita</p>
-                  <h3 className="text-2xl font-bold text-green-600">R$ {totalIncome.toLocaleString('pt-BR')}</h3>
-               </div>
-               <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
-                  <p className="text-slate-500 text-xs font-bold uppercase mb-1">Despesas</p>
-                  <h3 className="text-2xl font-bold text-red-600">R$ {totalExpense.toLocaleString('pt-BR')}</h3>
-               </div>
-               <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
-                  <p className="text-slate-500 text-xs font-bold uppercase mb-1">Resultado</p>
-                  <h3 className="text-2xl font-bold text-blue-600">R$ {netProfit.toLocaleString('pt-BR')}</h3>
-               </div>
-            </div>
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-80">
-               <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={cashFlowData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                    <YAxis axisLine={false} tickLine={false} />
-                    <Tooltip />
-                    <Bar dataKey="income" name="Receita" fill="#10b981" barSize={20} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" name="Despesa" fill="#ef4444" barSize={20} radius={[4, 4, 0, 0]} />
-                    <Line type="monotone" dataKey="profit" name="Lucro" stroke="#3b82f6" strokeWidth={3} />
-                  </ComposedChart>
-               </ResponsiveContainer>
-            </div>
-         </div>
-      )}
+        {activeTab === 'financial' && (
+           <div className="animate-fade-in space-y-6 pb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center group hover:border-green-300 transition-colors">
+                    <p className="text-slate-500 text-xs font-bold uppercase mb-1">Receita Mensal</p>
+                    <h3 className="text-2xl font-bold text-green-600">R$ {totalIncome.toLocaleString('pt-BR')}</h3>
+                 </div>
+                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center group hover:border-red-300 transition-colors">
+                    <p className="text-slate-500 text-xs font-bold uppercase mb-1">Despesas Operacionais</p>
+                    <h3 className="text-2xl font-bold text-red-600">R$ {totalExpense.toLocaleString('pt-BR')}</h3>
+                 </div>
+                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center group hover:border-blue-300 transition-colors">
+                    <p className="text-slate-500 text-xs font-bold uppercase mb-1">Resultado Líquido</p>
+                    <h3 className="text-2xl font-bold text-blue-600">R$ {netProfit.toLocaleString('pt-BR')}</h3>
+                 </div>
+              </div>
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-80">
+                 <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">Fluxo de Caixa Consolidado</h3>
+                 <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={cashFlowData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                      <YAxis axisLine={false} tickLine={false} />
+                      <Tooltip />
+                      <Bar dataKey="income" name="Receita" fill="#10b981" barSize={20} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="expense" name="Despesa" fill="#ef4444" barSize={20} radius={[4, 4, 0, 0]} />
+                      <Line type="monotone" dataKey="profit" name="Lucro" stroke="#3b82f6" strokeWidth={3} dot={{r: 4, fill: '#3b82f6'}} />
+                    </ComposedChart>
+                 </ResponsiveContainer>
+              </div>
+           </div>
+        )}
+      </div>
     </div>
   );
 };
