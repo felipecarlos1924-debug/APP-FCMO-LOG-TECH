@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Vehicle } from '../types.ts';
-import { Activity, Navigation, Thermometer, Gauge, Zap, Box, Anchor, AlertTriangle, Satellite, Car, LocateFixed, Minus, Clock, User, ArrowRight, Layers } from 'lucide-react';
+import { Activity, Navigation, Thermometer, Gauge, Zap, Box, Anchor, AlertTriangle, Satellite, Car, LocateFixed, Minus, Clock, User, ArrowRight, Layers, Power } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -23,7 +23,7 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
   const markersRef = useRef<Record<string, any>>({});
   const trailsRef = useRef<Record<string, any>>({});
   
-  const [fleetStatus, setFleetStatus] = useState<Record<string, { lat: number, lng: number, speed: number, rpm: number, temp: number, fuel: number, history: [number, number][] }>>({});
+  const [fleetStatus, setFleetStatus] = useState<Record<string, { lat: number, lng: number, speed: number, rpm: number, temp: number, fuel: number, mileage: number, history: [number, number][] }>>({});
 
   // Efeito para sincronizar os dados iniciais dos veículos
   useEffect(() => {
@@ -37,6 +37,7 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
         rpm: v.rpm || 0,
         temp: v.engineTemp || 90,
         fuel: v.fuelLevel || 50,
+        mileage: v.mileage || 0,
         history: [[v.latitude || -15.5960, v.longitude || -56.0960]]
       };
     });
@@ -66,9 +67,8 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
          zoomControl: false,
          attributionControl: false,
          maxZoom: 18
-      }).setView([-15.5960, -56.0960], 13);
+      }).setView([-15.653342, -55.988658], 15);
 
-      // Usando Voyager (mais claro e preciso para logística)
       window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         subdomains: 'abcd',
         maxZoom: 19
@@ -77,13 +77,11 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
       window.L.control.zoom({ position: 'bottomright' }).addTo(map);
       mapInstance.current = map;
 
-      // Forçar redimensionamento para evitar bugs de tiles não carregados
       setTimeout(() => map.invalidateSize(), 300);
 
-      // Ajustar o zoom para ver todos os veículos
       if (vehicles.length > 0) {
         const bounds = vehicles.map(v => [v.latitude || -15.5960, v.longitude || -56.0960]);
-        map.fitBounds(bounds, { padding: [50, 50] });
+        map.fitBounds(bounds, { padding: [100, 100] });
       }
     } catch (e) {
       console.error("Erro ao inicializar mapa:", e);
@@ -103,28 +101,15 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
 
     const map = mapInstance.current;
 
-    // Limpar marcadores de veículos removidos
-    Object.keys(markersRef.current).forEach(id => {
-        if (!vehicles.find(v => v.id === id)) {
-            markersRef.current[id].remove();
-            delete markersRef.current[id];
-            if (trailsRef.current[id]) {
-                trailsRef.current[id].remove();
-                delete trailsRef.current[id];
-            }
-        }
-    });
-
     vehicles.forEach(v => {
         if (markersRef.current[v.id]) return;
 
         const isMoving = v.status === 'Em Viagem' || v.status === 'Ativo';
-        const pulseColor = isMoving ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)';
         const iconColor = isMoving ? '#10b981' : '#ef4444';
         
         const iconHtml = `
           <div style="width: 40px; height: 40px; position: relative; display: flex; align-items: center; justify-content: center;">
-             <div style="position: absolute; width: 30px; height: 30px; border-radius: 50%; background: ${pulseColor}; animation: pulse 2s infinite;"></div>
+             <div class="pulse-ring" style="position: absolute; width: 30px; height: 30px; border-radius: 50%; background: ${isMoving ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}; animation: pulse 2s infinite;"></div>
              <div style="z-index: 10; display: flex; align-items: center; justify-content: center;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.5));">
                    <path d="M12 2L2 22L12 18L22 22L12 2Z" fill="${iconColor}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
@@ -170,7 +155,7 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
     }
   };
 
-  // Simulação de movimento "Live" com suavização
+  // Simulação INTELIGENTE: Só move se tiver velocidade > 0
   useEffect(() => {
     if (!isLive) return;
 
@@ -180,34 +165,33 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
         let hasChanges = false;
         
         vehicles.forEach(v => {
-           if (v.status === 'Parado' || v.status === 'Manutenção') return;
            const current = next[v.id];
            if (!current) return;
            
-           // Reduzi o jitter para 0.00015 para manter o caminhão "na rua"
-           const latChange = (Math.random() - 0.5) * 0.00015; 
-           const lngChange = (Math.random() - 0.5) * 0.00015;
-           const newLat = current.lat + latChange;
-           const newLng = current.lng + lngChange;
+           // Se a velocidade for 0, o veículo não muda de latitude/longitude
+           let newLat = current.lat;
+           let newLng = current.lng;
+           
+           if (current.speed > 0) {
+              newLat += (Math.random() - 0.5) * 0.0001; 
+              newLng += (Math.random() - 0.5) * 0.0001;
+              hasChanges = true;
+           }
 
            const newHistory = [...current.history, [newLat, newLng]].slice(-30);
 
            next[v.id] = {
+             ...current,
              lat: newLat,
              lng: newLng,
-             speed: Math.max(0, Math.min(100, current.speed + (Math.random() * 4 - 2))),
-             rpm: Math.max(800, Math.min(2200, current.rpm + (Math.random() * 50 - 25))),
-             temp: Math.max(88, Math.min(96, current.temp + (Math.random() * 0.4 - 0.2))),
-             fuel: Math.max(0, current.fuel - 0.001),
+             // Simulação leve de variação de motor se estiver ligado
+             rpm: current.rpm > 0 ? Math.max(800, current.rpm + (Math.random() * 20 - 10)) : 0,
              history: newHistory as [number, number][]
            };
-           hasChanges = true;
 
-           // Atualiza posição no Leaflet
            if (markersRef.current[v.id]) {
              markersRef.current[v.id].setLatLng([newLat, newLng]);
            }
-
            if (trailsRef.current[v.id]) {
               trailsRef.current[v.id].setLatLngs(newHistory);
            }
@@ -215,14 +199,16 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
         
         return hasChanges ? next : prev;
       });
-    }, 1500); // Intervalo mais lento para parecer mais natural
+    }, 2000);
 
     return () => clearInterval(interval);
   }, [isLive, vehicles]);
 
   const currentVehicleData = (selectedVehicle && fleetStatus[selectedVehicle.id]) ? fleetStatus[selectedVehicle.id] : {
-    lat: 0, lng: 0, speed: 0, rpm: 0, temp: 0, fuel: 0, history: []
+    lat: 0, lng: 0, speed: 0, rpm: 0, temp: 0, fuel: 0, mileage: 0, history: []
   };
+
+  const isActuallyMoving = currentVehicleData.speed > 0;
 
   return (
     <div className="flex h-full w-full relative bg-slate-100">
@@ -241,30 +227,32 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
           
           {!isOverlayMinimized && (
             <div className="flex-1 overflow-y-auto scrollbar-hide">
-              {vehicles.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 italic text-sm">Nenhum veículo ativo.</div>
-              ) : vehicles.map(vehicle => (
-                <button 
-                  key={vehicle.id} 
-                  onClick={() => { 
-                    setSelectedVehicle(vehicle); 
-                    if (markersRef.current[vehicle.id] && mapInstance.current) {
-                      mapInstance.current.flyTo(markersRef.current[vehicle.id].getLatLng(), 16);
-                    }
-                  }} 
-                  className={`w-full text-left p-3 border-b border-slate-50 hover:bg-slate-50 flex items-center justify-between transition-colors ${selectedVehicle?.id === vehicle.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : 'border-l-4 border-l-transparent'}`}
-                >
-                  <div className="min-w-0 flex-1">
-                     <span className="block font-bold text-sm truncate">{vehicle.plate}</span>
-                     <span className="text-[10px] text-slate-500 uppercase font-medium">{vehicle.model}</span>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${vehicle.status === 'Em Viagem' || vehicle.status === 'Ativo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {fleetStatus[vehicle.id]?.speed.toFixed(0) || 0} KM/H
-                    </span>
-                  </div>
-                </button>
-              ))}
+              {vehicles.map(vehicle => {
+                const status = fleetStatus[vehicle.id];
+                const moving = (status?.speed || 0) > 0;
+                return (
+                  <button 
+                    key={vehicle.id} 
+                    onClick={() => { 
+                      setSelectedVehicle(vehicle); 
+                      if (markersRef.current[vehicle.id] && mapInstance.current) {
+                        mapInstance.current.flyTo(markersRef.current[vehicle.id].getLatLng(), 17);
+                      }
+                    }} 
+                    className={`w-full text-left p-3 border-b border-slate-50 hover:bg-slate-50 flex items-center justify-between transition-colors ${selectedVehicle?.id === vehicle.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : 'border-l-4 border-l-transparent'}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                       <span className="block font-bold text-sm truncate">{vehicle.plate}</span>
+                       <span className="text-[10px] text-slate-500 uppercase font-medium">{vehicle.model}</span>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${moving ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {moving ? `${status.speed.toFixed(0)} KM/H` : 'PARADO'}
+                      </span>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           )}
        </div>
@@ -277,14 +265,17 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
           {selectedVehicle && (
             <div className="absolute bottom-6 left-6 right-6 z-[1000] bg-white/95 backdrop-blur-md p-5 rounded-2xl border border-slate-200 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 animate-slide-up">
                <div className="flex items-center gap-4 w-full md:w-auto">
-                  <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200 text-white">
-                    <Car size={28} />
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg text-white transition-colors ${isActuallyMoving ? 'bg-green-600 shadow-green-200' : 'bg-slate-800 shadow-slate-200'}`}>
+                    {isActuallyMoving ? <Navigation size={28} /> : <Power size={28} />}
                   </div>
                   <div>
                     <h3 className="font-black text-xl text-slate-800 leading-none">{selectedVehicle.plate}</h3>
-                    <p className="text-xs text-slate-500 font-bold mt-1 flex items-center gap-1 uppercase tracking-wider">
-                      <User size={12} /> {selectedVehicle.driver}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                       <span className={`w-2 h-2 rounded-full ${isActuallyMoving ? 'bg-green-500 animate-pulse' : 'bg-orange-500'}`}></span>
+                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                         Status: {isActuallyMoving ? 'Em Movimento' : 'Ligado / Parado'}
+                       </p>
+                    </div>
                   </div>
                </div>
 
@@ -294,20 +285,20 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
                     <p className="text-2xl font-mono font-black text-slate-800">{Math.round(currentVehicleData.speed)} <span className="text-xs">km/h</span></p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Rotação</p>
-                    <p className="text-2xl font-mono font-black text-slate-800">{Math.round(currentVehicleData.rpm)} <span className="text-xs">RPM</span></p>
+                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Odômetro</p>
+                    <p className="text-2xl font-mono font-black text-slate-800">{currentVehicleData.mileage.toLocaleString('pt-BR')} <span className="text-xs">km</span></p>
                   </div>
                   <div className="text-center hidden sm:block">
-                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Combustível</p>
+                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Carga</p>
                     <div className="flex items-center justify-center gap-2">
-                      <p className={`text-2xl font-mono font-black ${currentVehicleData.fuel < 20 ? 'text-red-600' : 'text-green-600'}`}>
-                        {currentVehicleData.fuel.toFixed(0)}%
+                      <p className="text-2xl font-mono font-black text-blue-600">
+                        {selectedVehicle.isLoaded ? '100%' : 'VAZIO'}
                       </p>
                     </div>
                   </div>
                   <div className="text-center hidden lg:block">
-                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Temp. Motor</p>
-                    <p className="text-2xl font-mono font-black text-slate-800">{currentVehicleData.temp.toFixed(1)}°</p>
+                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Motor</p>
+                    <p className="text-2xl font-mono font-black text-slate-800">{currentVehicleData.temp.toFixed(0)}°C</p>
                   </div>
                </div>
 
@@ -319,8 +310,15 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
                  >
                    <LocateFixed size={20} />
                  </button>
-                 <button className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl text-sm font-black text-white flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-200">
-                    Sincronizar <ArrowRight size={18} />
+                 <button 
+                    onClick={() => {
+                       if (mapInstance.current) {
+                          mapInstance.current.flyTo([currentVehicleData.lat, currentVehicleData.lng], 18);
+                       }
+                    }}
+                    className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl text-sm font-black text-white flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-200"
+                 >
+                    Focar Veículo <LocateFixed size={18} />
                  </button>
                </div>
             </div>
