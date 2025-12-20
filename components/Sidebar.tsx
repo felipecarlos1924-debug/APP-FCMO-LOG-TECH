@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { LayoutDashboard, Truck, Droplets, Wrench, Disc, Settings, LogOut, History, FileBarChart, Users, BookOpen } from 'lucide-react';
 import { ViewState, User } from '../types';
@@ -19,13 +18,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, onL
     p.includes('MANAGE_USERS') && { id: 'employees', label: 'Equipe', icon: Users },
     p.includes('MANAGE_FUEL') && { id: 'fuel', label: 'Combustível', icon: Droplets },
     (p.includes('MANAGE_MAINTENANCE') || p.includes('APPROVE_MAINTENANCE')) && { id: 'maintenance', label: 'Manutenção', icon: Wrench },
-    p.includes('MANAGE_TIRES') && { id: 'tires', label: 'Pneus', icon: Disc },
-    p.includes('VIEW_DASHBOARD') && { id: 'reports', label: 'Relatórios', icon: FileBarChart },
+    p.includes('MANAGE_TIRES', ) && { id: 'tires', label: 'Pneus', icon: Disc },
+    p.includes('VIEW_DASHBOARD', ) && { id: 'reports', label: 'Relatórios', icon: FileBarChart },
     p.includes('VIEW_HISTORY') && { id: 'history', label: 'Audit Log', icon: History },
   ].filter(Boolean);
 
   return (
-    <div className="w-64 bg-slate-900 text-white flex flex-col h-full shadow-2xl z-20">
+    <div className="hidden md:flex w-64 bg-slate-900 text-white flex-col h-full shadow-2xl z-20 shrink-0">
       <div className="p-6 border-b border-slate-800">
         <h1 className="text-2xl font-black tracking-tighter text-blue-500">FCMO<span className="text-white">LOG</span></h1>
         <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-[0.2em] font-bold">Intelligent Logistics</p>
@@ -66,18 +65,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, onL
           <BookOpen size={18} />
           <span>Docs Técnicos</span>
         </button>
-
-        {p.includes('MANAGE_USERS') && (
-          <button 
-            onClick={() => onChangeView('settings')}
-            className={`flex items-center gap-3 px-4 py-2.5 w-full rounded-lg text-sm font-medium transition-colors
-              ${currentView === 'settings' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-white hover:bg-slate-800'}
-            `}
-          >
-            <Settings size={18} />
-            <span>Configurações</span>
-          </button>
-        )}
         
         <button 
           onClick={onLogout}
