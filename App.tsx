@@ -1,36 +1,40 @@
-
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from './components/Sidebar';
-import { Dashboard } from './components/Dashboard';
-import { FleetModule } from './components/FleetModule';
-import { FuelModule } from './components/FuelModule';
-import { MaintenanceModule } from './components/MaintenanceModule';
-import { ReportsModule } from './components/ReportsModule';
-import { TiresModule } from './components/TiresModule';
-import { SettingsModule } from './components/SettingsModule';
-import { HistoryModule } from './components/HistoryModule';
-import { TelemetryModule } from './components/TelemetryModule';
-import { EmployeesModule } from './components/EmployeesModule';
-import { GamificationModule } from './components/GamificationModule';
-import { DocumentsModule } from './components/DocumentsModule';
-import { TechDocsModule } from './components/TechDocsModule';
-import { LoginScreen } from './components/LoginScreen';
-import { MOCK_VEHICLES, MOCK_FUEL_LOGS, MOCK_MAINTENANCE, MOCK_TIRES, MOCK_CHECKLISTS, MOCK_USERS, MOCK_AUDIT_LOGS, MOCK_BRANCHES, MOCK_DRIVERS, MOCK_DOCUMENTS } from './constants';
-import { ViewState, Vehicle, FuelLog, MaintenanceOrder, Tire, Checklist, User, AuditLogEntry, Branch, DriverProfile, FleetDocument } from './types';
-import { Bell, Search, User as UserIcon, HelpCircle, CheckCircle, Info, RefreshCw, Trash2 } from 'lucide-react';
+import { Sidebar } from './components/Sidebar.tsx';
+import { Dashboard } from './components/Dashboard.tsx';
+import { FleetModule } from './components/FleetModule.tsx';
+import { FuelModule } from './components/FuelModule.tsx';
+import { MaintenanceModule } from './components/MaintenanceModule.tsx';
+import { ReportsModule } from './components/ReportsModule.tsx';
+import { TiresModule } from './components/TiresModule.tsx';
+import { SettingsModule } from './components/SettingsModule.tsx';
+import { HistoryModule } from './components/HistoryModule.tsx';
+import { TelemetryModule } from './components/TelemetryModule.tsx';
+import { EmployeesModule } from './components/EmployeesModule.tsx';
+import { GamificationModule } from './components/GamificationModule.tsx';
+import { DocumentsModule } from './components/DocumentsModule.tsx';
+import { TechDocsModule } from './components/TechDocsModule.tsx';
+import { LoginScreen } from './components/LoginScreen.tsx';
+import { MOCK_VEHICLES, MOCK_FUEL_LOGS, MOCK_MAINTENANCE, MOCK_TIRES, MOCK_CHECKLISTS, MOCK_USERS, MOCK_AUDIT_LOGS, MOCK_BRANCHES, MOCK_DRIVERS, MOCK_DOCUMENTS } from './constants.ts';
+import { ViewState, Vehicle, FuelLog, MaintenanceOrder, Tire, Checklist, User, AuditLogEntry, Branch, DriverProfile, FleetDocument } from './types.ts';
+import { Bell, Search, User as UserIcon, HelpCircle, CheckCircle, RefreshCw, Trash2 } from 'lucide-react';
 
 function useStickyState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const [value, setValue] = useState(() => {
+  const [value, setValue] = useState<T>(() => {
     try {
       const stickyValue = window.localStorage.getItem(key);
       return stickyValue !== null ? JSON.parse(stickyValue) : defaultValue;
     } catch (error) {
+      console.warn(`Erro ao carregar chave ${key} do localStorage:`, error);
       return defaultValue;
     }
   });
 
   useEffect(() => {
-    window.localStorage.setItem(key, JSON.stringify(value));
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.error(`Erro ao salvar chave ${key} no localStorage:`, error);
+    }
   }, [key, value]);
 
   return [value, setValue];
@@ -125,15 +129,15 @@ export default function App() {
           <div className="flex items-center gap-4 w-96">
             <div className="relative w-full group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
-              <input type="text" placeholder="Pesquisar placa, motorista ou serviço..." className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+              <input type="text" placeholder="Pesquisar..." className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={() => setCurrentView('techdocs')} className="text-slate-400 hover:text-blue-600 p-2 rounded-lg transition-colors" title="Ajuda & Documentação">
+            <button onClick={() => setCurrentView('techdocs')} className="text-slate-400 hover:text-blue-600 p-2 rounded-lg transition-colors" title="Ajuda">
                <HelpCircle size={20} />
             </button>
             {currentUser.role === 'OWNER' && (
-              <button onClick={handleResetData} className="text-slate-400 hover:text-red-500 p-2 rounded-lg transition-colors" title="Limpar Dados LocalStorage">
+              <button onClick={handleResetData} className="text-slate-400 hover:text-red-500 p-2 rounded-lg transition-colors" title="Resetar Dados">
                 <RefreshCw size={20} />
               </button>
             )}
@@ -160,7 +164,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Notificações Flyout */}
         {showNotifications && (
           <div className="absolute top-16 right-8 w-80 bg-white shadow-2xl rounded-2xl border border-slate-200 z-50 animate-fade-in">
              <div className="p-4 border-b border-slate-100 flex justify-between items-center">
@@ -193,10 +196,10 @@ export default function App() {
               <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center">
                  <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6"><Trash2 size={40} /></div>
                  <h3 className="text-2xl font-bold text-slate-800 mb-2">Excluir?</h3>
-                 <p className="text-slate-500 text-sm mb-8 leading-relaxed">Você está prestes a remover permanentemente este registro do sistema. Esta ação não pode ser desfeita.</p>
+                 <p className="text-slate-500 text-sm mb-8 leading-relaxed">Deseja remover este registro permanentemente?</p>
                  <div className="flex gap-4">
                     <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 rounded-2xl border border-slate-200 font-bold text-slate-700 hover:bg-slate-50 transition-colors">Cancelar</button>
-                    <button onClick={handleConfirmDelete} className="flex-1 py-3 rounded-2xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-200">Excluir</button>
+                    <button onClick={handleConfirmDelete} className="flex-1 py-3 rounded-2xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors">Excluir</button>
                  </div>
               </div>
            </div>
