@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { LayoutDashboard, Truck, Droplets, Wrench, Disc, Settings, LogOut, History, FileBarChart, Users, Trophy, FileText, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Truck, Droplets, Wrench, Disc, Settings, LogOut, History, FileBarChart, Users, BookOpen } from 'lucide-react';
 import { ViewState, User } from '../types';
 
 interface SidebarProps {
@@ -16,11 +17,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, onL
     p.includes('VIEW_DASHBOARD') && { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     p.includes('VIEW_FLEET') && { id: 'fleet', label: 'Frota & GPS', icon: Truck },
     p.includes('MANAGE_USERS') && { id: 'employees', label: 'Equipe', icon: Users },
-    { id: 'gamification', label: 'Liga de Motoristas', icon: Trophy },
     p.includes('MANAGE_FUEL') && { id: 'fuel', label: 'Combustível', icon: Droplets },
     (p.includes('MANAGE_MAINTENANCE') || p.includes('APPROVE_MAINTENANCE')) && { id: 'maintenance', label: 'Manutenção', icon: Wrench },
     p.includes('MANAGE_TIRES') && { id: 'tires', label: 'Pneus', icon: Disc },
-    { id: 'documents', label: 'Documentação', icon: FileText },
     p.includes('VIEW_DASHBOARD') && { id: 'reports', label: 'Relatórios', icon: FileBarChart },
     p.includes('VIEW_HISTORY') && { id: 'history', label: 'Audit Log', icon: History },
   ].filter(Boolean);

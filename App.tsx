@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
@@ -8,14 +9,11 @@ import { ReportsModule } from './components/ReportsModule.tsx';
 import { TiresModule } from './components/TiresModule.tsx';
 import { SettingsModule } from './components/SettingsModule.tsx';
 import { HistoryModule } from './components/HistoryModule.tsx';
-import { TelemetryModule } from './components/TelemetryModule.tsx';
 import { EmployeesModule } from './components/EmployeesModule.tsx';
-import { GamificationModule } from './components/GamificationModule.tsx';
-import { DocumentsModule } from './components/DocumentsModule.tsx';
 import { TechDocsModule } from './components/TechDocsModule.tsx';
 import { LoginScreen } from './components/LoginScreen.tsx';
-import { MOCK_VEHICLES, MOCK_FUEL_LOGS, MOCK_MAINTENANCE, MOCK_TIRES, MOCK_CHECKLISTS, MOCK_USERS, MOCK_AUDIT_LOGS, MOCK_BRANCHES, MOCK_DRIVERS, MOCK_DOCUMENTS } from './constants.ts';
-import { ViewState, Vehicle, FuelLog, MaintenanceOrder, Tire, Checklist, User, AuditLogEntry, Branch, DriverProfile, FleetDocument } from './types.ts';
+import { MOCK_VEHICLES, MOCK_FUEL_LOGS, MOCK_MAINTENANCE, MOCK_TIRES, MOCK_CHECKLISTS, MOCK_USERS, MOCK_AUDIT_LOGS, MOCK_BRANCHES, MOCK_DRIVERS } from './constants.ts';
+import { ViewState, Vehicle, FuelLog, MaintenanceOrder, Tire, Checklist, User, AuditLogEntry, Branch, DriverProfile } from './types.ts';
 import { Bell, Search, User as UserIcon, HelpCircle, CheckCircle, RefreshCw, Trash2 } from 'lucide-react';
 
 function useStickyState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
@@ -57,7 +55,6 @@ export default function App() {
   const [checklists, setChecklists] = useStickyState<Checklist[]>(MOCK_CHECKLISTS, 'fcmo_checklists');
   const [auditLogs, setAuditLogs] = useStickyState<AuditLogEntry[]>(MOCK_AUDIT_LOGS, 'fcmo_audit_logs');
   const [drivers, setDrivers] = useStickyState<DriverProfile[]>(MOCK_DRIVERS, 'fcmo_drivers');
-  const [documents, setDocuments] = useStickyState<FleetDocument[]>(MOCK_DOCUMENTS, 'fcmo_documents');
 
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ msg, type });
@@ -111,8 +108,6 @@ export default function App() {
       case 'maintenance': return <MaintenanceModule maintenance={maintenance} vehicles={vehicles} onAddMaintenance={m => setMaintenance(prev => [m, ...prev])} onUpdateMaintenance={m => setMaintenance(prev => prev.map(x => x.id === m.id ? m : x))} onApproveMaintenance={id => setMaintenance(prev => prev.map(m => m.id === id ? {...m, status: 'Aprovado'} : m))} onDeleteMaintenance={id => setDeleteTarget({id, type: 'MAINTENANCE'})} currentUser={currentUser} />;
       case 'tires': return <TiresModule tires={tires} vehicles={vehicles} onAddTire={t => setTires(prev => [...prev, t])} onUpdateTire={t => setTires(prev => prev.map(x => x.id === t.id ? t : x))} onDeleteTire={id => setDeleteTarget({id, type: 'TIRE'})} currentUser={currentUser} />;
       case 'employees': return <EmployeesModule users={users} branches={branches} currentUser={currentUser} onAddUser={u => setUsers(prev => [...prev, u])} onUpdateUser={u => setUsers(prev => prev.map(x => x.id === u.id ? u : x))} onDeleteUser={id => setDeleteTarget({id, type: 'USER'})} />;
-      case 'gamification': return <GamificationModule drivers={drivers} />;
-      case 'documents': return <DocumentsModule documents={documents} vehicles={vehicles} drivers={drivers} onAddDocument={doc => setDocuments(prev => [doc, ...prev])} />;
       case 'techdocs': return <TechDocsModule />;
       case 'reports': return <ReportsModule vehicles={vehicles} fuelLogs={fuelLogs} maintenance={maintenance} />;
       case 'history': return <HistoryModule logs={auditLogs} />;

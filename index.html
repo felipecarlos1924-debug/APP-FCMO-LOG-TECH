@@ -51,6 +51,11 @@
       @keyframes spin {
         to { transform: rotate(360deg); }
       }
+      /* Ajuste para marcadores do mapa não flutuarem */
+      .custom-vehicle-marker {
+        background: none !important;
+        border: none !important;
+      }
     </style>
     <script type="importmap">
 {
@@ -77,7 +82,7 @@
         <div style="font-weight: 800; letter-spacing: -0.025em; font-size: 1.5rem;">
           FCMO<span style="color: #3b82f6;">LOG</span>
         </div>
-        <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.1em;">Logística Inteligente • V2.4</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.1em;">Sincronizando Localização Exata...</p>
       </div>
     </div>
     <script type="module" src="./index.tsx"></script>
