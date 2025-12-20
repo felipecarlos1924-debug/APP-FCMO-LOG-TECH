@@ -1,4 +1,3 @@
-
 import { Vehicle, VehicleStatus, FuelLog, MaintenanceOrder, DriverProfile, Tire, Checklist, User, AuditLogEntry, Permission, Branch, FleetDocument, FinancialTransaction } from './types';
 
 const ALL_PERMISSIONS: Permission[] = [
@@ -56,7 +55,6 @@ export const MOCK_USERS: User[] = [
 export const MOCK_AUDIT_LOGS: AuditLogEntry[] = [
   { id: '1', userId: '1', userName: 'Felipe', action: 'APROVOU_ABASTECIMENTO', details: 'Aprovou abastecimento R$ 2.790,00 - Volvo FH 540', timestamp: '2023-11-15T10:30:00', module: 'Combustível' },
   { id: '2', userId: '3', userName: 'Raquel', action: 'NOVO_CHECKLIST', details: 'Realizou checklist de saída - Mercedes Actros', timestamp: '2023-11-15T07:30:00', module: 'Frota' },
-  { id: '3', userId: '2', userName: 'Fabricio', action: 'CRIOU_OS', details: 'Nova OS #102 - Troca de Pneus', timestamp: '2023-11-14T14:20:00', module: 'Manutenção' },
 ];
 
 export const MOCK_VEHICLES: Vehicle[] = [
@@ -80,25 +78,6 @@ export const MOCK_VEHICLES: Vehicle[] = [
     lastUpdate: 'Há 10 seg'
   },
   {
-    id: '2',
-    plate: 'RBD-9876',
-    model: 'Scania R450',
-    driver: 'Roberto Almeida',
-    status: VehicleStatus.ACTIVE,
-    mileage: 210500,
-    lastMaintenance: '2023-09-20',
-    image: 'https://picsum.photos/400/300?random=2',
-    branchId: '1',
-    currentSpeed: 45,
-    rpm: 1200,
-    fuelLevel: 40,
-    engineTemp: 88,
-    latitude: -15.6500,
-    longitude: -56.1300,
-    isLoaded: true,
-    lastUpdate: 'Há 1 min'
-  },
-  {
     id: '3',
     plate: 'NMT-5678',
     model: 'Mercedes Actros',
@@ -108,11 +87,11 @@ export const MOCK_VEHICLES: Vehicle[] = [
     lastMaintenance: '2023-11-01',
     image: 'https://picsum.photos/400/300?random=3',
     branchId: '1',
-    currentSpeed: 0, // Inicia parado como solicitado
-    rpm: 850, // Motor ligado (ocioso)
+    currentSpeed: 0,
+    rpm: 0,
     fuelLevel: 88,
-    engineTemp: 90,
-    // LOCALIZAÇÃO EXATA FORNECIDA PELO USUÁRIO
+    engineTemp: 25,
+    // LOCALIZAÇÃO EXATA SOLICITADA
     latitude: -15.653342,
     longitude: -55.988658,
     isLoaded: true,
