@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Vehicle } from '../types.ts';
-import { Navigation, Car, LocateFixed, Power, MapPin, Gauge, Thermometer, ShieldCheck, ChevronUp, Radio, Signal, Wifi, Activity } from 'lucide-react';
+import { Navigation, Car, LocateFixed, Power, MapPin, Gauge, Thermometer, ShieldCheck, ChevronUp, Radio, Signal, Wifi, Activity, Navigation2, Crosshair, Zap } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -18,38 +18,67 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
   const [isEngineOn, setIsEngineOn] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
   
+  // Estados de Localização Real
+  const [coords, setCoords] = useState({ lat: -15.653342, lng: -55.988658 });
+  const [tripDistance, setTripDistance] = useState(0);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [heading, setHeading] = useState<number>(0);
+  
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const accuracyCircleRef = useRef<any>(null);
+  const polylineRef = useRef<any>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const lastCoordsRef = useRef<{lat: number, lng: number} | null>(null);
   
   const [telemetry, setTelemetry] = useState({
     rpm: 0,
     temp: 24,
     speed: 0,
-    signal: 4
+    signalBars: 0
   });
 
-  // Inicializa Mapa
+  // Haversine para distância precisa
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Inicializa Mapa com camadas profissionais
   useEffect(() => {
     if (!mapRef.current || !window.L || mapInstance.current) return;
-
-    // Localização Exata Solicitada (Cuiabá)
-    const lat = -15.653342;
-    const lng = -55.988658;
 
     mapInstance.current = window.L.map(mapRef.current, {
        zoomControl: false,
        attributionControl: false,
-       maxZoom: 18,
+       maxZoom: 20,
        tap: true
-    }).setView([lat, lng], 17);
+    }).setView([coords.lat, coords.lng], 16);
 
     window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(mapInstance.current);
 
-    // Corrigir bug de tamanho no mobile
-    setTimeout(() => {
-      if (mapInstance.current) mapInstance.current.invalidateSize();
-    }, 500);
+    // Linha de percurso
+    polylineRef.current = window.L.polyline([], {
+      color: '#3b82f6',
+      weight: 5,
+      opacity: 0.6,
+      lineJoin: 'round'
+    }).addTo(mapInstance.current);
+
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const { latitude, longitude } = pos.coords;
+      setCoords({ lat: latitude, lng: longitude });
+      mapInstance.current?.setView([latitude, longitude], 17);
+    }, null, { enableHighAccuracy: true });
+
+    setTimeout(() => mapInstance.current?.invalidateSize(), 500);
 
     return () => {
        if (mapInstance.current) {
@@ -59,35 +88,134 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
     };
   }, []); 
 
-  // Atualizar Marcador e Pulsação
+  // Core do Rastreamento de Alta Precisão
+  useEffect(() => {
+    if (isEngineOn) {
+      if ("geolocation" in navigator) {
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (position) => {
+            const { latitude, longitude, speed, accuracy, heading: devHeading } = position.coords;
+            
+            // FILTRO DE QUALIDADE: Ignorar se a precisão for pior que 50 metros (sinal muito ruim)
+            if (accuracy > 50) {
+                setTelemetry(prev => ({ ...prev, signalBars: 1 }));
+                return;
+            }
+
+            const newCoords = { lat: latitude, lng: longitude };
+            
+            // Calcular Barras de Sinal (Proporcional à precisão em metros)
+            let bars = 1;
+            if (accuracy < 10) bars = 5;
+            else if (accuracy < 20) bars = 4;
+            else if (accuracy < 30) bars = 3;
+            else bars = 2;
+
+            setTelemetry(prev => ({
+              ...prev,
+              speed: speed ? (speed * 3.6) : 0,
+              rpm: speed ? (1100 + (speed * 120)) : 850,
+              signalBars: bars
+            }));
+
+            setAccuracy(accuracy);
+            if (devHeading !== null) setHeading(devHeading);
+
+            // Somente computa distância se o movimento for superior à margem de erro (Filtro de Jitter)
+            if (lastCoordsRef.current) {
+              const dist = calculateDistance(
+                lastCoordsRef.current.lat, 
+                lastCoordsRef.current.lng, 
+                latitude, 
+                longitude
+              );
+              
+              if (dist > (accuracy / 1000) * 1.5) { 
+                setTripDistance(prev => prev + dist);
+                if (polylineRef.current) polylineRef.current.addLatLng([latitude, longitude]);
+              }
+            } else {
+               if (polylineRef.current) polylineRef.current.setLatLngs([[latitude, longitude]]);
+            }
+
+            setCoords(newCoords);
+            lastCoordsRef.current = newCoords;
+          },
+          (error) => {
+            console.error("GPS Error:", error);
+            setIsEngineOn(false);
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 10000
+          }
+        );
+      }
+    } else {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      setTelemetry(prev => ({ ...prev, speed: 0, rpm: 0, signalBars: 0 }));
+      lastCoordsRef.current = null;
+      if (accuracyCircleRef.current) accuracyCircleRef.current.remove();
+      accuracyCircleRef.current = null;
+    }
+
+    return () => {
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+    };
+  }, [isEngineOn]);
+
+  // Sincronizar UI do Mapa (Marcador + Círculo + Heading)
   useEffect(() => {
     if (!mapInstance.current || !window.L) return;
 
-    const lat = -15.653342;
-    const lng = -55.988658;
     const color = isEngineOn ? '#10b981' : '#3b82f6';
     
+    // Marcador com Heading (Rotação)
     const iconHtml = `
-      <div style="width: 44px; height: 44px; position: relative; display: flex; align-items: center; justify-content: center;">
-         ${isEngineOn ? `<div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: rgba(16, 185, 129, 0.4); animation: pulse 1.5s infinite;"></div>` : ''}
-         <div style="z-index: 10; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
+      <div style="width: 44px; height: 44px; position: relative; display: flex; align-items: center; justify-content: center; transform: rotate(${heading}deg); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);">
+         ${isEngineOn ? `<div style="position: absolute; width: 34px; height: 34px; border-radius: 50%; background: rgba(16, 185, 129, 0.3); animation: sonar 2s infinite;"></div>` : ''}
+         <div style="z-index: 10; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));">
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-               <path d="M12 2L2 22L12 18L22 22L12 2Z" fill="${color}" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>
+               <path d="M12 2L2 22L12 18L22 22L12 2Z" fill="${color}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
             </svg>
          </div>
       </div>
     `;
 
+    // Atualizar Círculo de Precisão
+    if (accuracy && isEngineOn) {
+        if (!accuracyCircleRef.current) {
+            accuracyCircleRef.current = window.L.circle([coords.lat, coords.lng], {
+                radius: accuracy,
+                color: '#3b82f6',
+                fillColor: '#3b82f6',
+                fillOpacity: 0.1,
+                weight: 1
+            }).addTo(mapInstance.current);
+        } else {
+            accuracyCircleRef.current.setLatLng([coords.lat, coords.lng]);
+            accuracyCircleRef.current.setRadius(accuracy);
+        }
+    }
+
     if (markerRef.current) {
-      markerRef.current.setLatLng([lat, lng]);
+      markerRef.current.setLatLng([coords.lat, coords.lng]);
       markerRef.current.setIcon(window.L.divIcon({
           className: 'custom-vehicle-marker',
           html: iconHtml,
           iconSize: [44, 44],
           iconAnchor: [22, 22]
       }));
+      
+      if (isEngineOn) {
+        mapInstance.current.panTo([coords.lat, coords.lng], { animate: true, duration: 0.8 });
+      }
     } else {
-      markerRef.current = window.L.marker([lat, lng], {
+      markerRef.current = window.L.marker([coords.lat, coords.lng], {
           icon: window.L.divIcon({
               className: 'custom-vehicle-marker',
               html: iconHtml,
@@ -96,150 +224,152 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
           })
       }).addTo(mapInstance.current);
     }
-  }, [isEngineOn]);
-
-  // Telemetria Simulada e Estável
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTelemetry(prev => ({
-        ...prev,
-        rpm: isEngineOn ? 860 + (Math.random() * 12) : 0,
-        temp: isEngineOn ? Math.min(88, prev.temp + 0.05) : Math.max(26, prev.temp - 0.1),
-        speed: 0 // Mantendo parado para teste
-      }));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isEngineOn]);
+  }, [coords, isEngineOn, heading]);
 
   return (
     <div className="flex flex-col h-full w-full relative bg-slate-900 overflow-hidden">
        
-       {/* HEADER COMPACTO PARA MOBILE */}
-       <div className="absolute top-0 left-0 right-0 px-4 py-6 bg-gradient-to-b from-slate-900/95 via-slate-900/60 to-transparent z-[1000] flex justify-between items-start pointer-events-none">
+       {/* UI OVERLAY SUPERIOR */}
+       <div className="absolute top-0 left-0 right-0 px-4 py-6 bg-gradient-to-b from-slate-900 via-slate-900/40 to-transparent z-[1000] flex justify-between items-start pointer-events-none">
           <div className="flex items-center gap-3 pointer-events-auto">
-             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-2xl transition-all ${isEngineOn ? 'bg-green-600 ring-4 ring-green-600/20' : 'bg-blue-600 ring-4 ring-blue-600/20'}`}>
-                <Car size={26} />
+             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-2xl transition-all duration-500 ${isEngineOn ? 'bg-green-600 ring-8 ring-green-600/10' : 'bg-blue-600 ring-8 ring-blue-600/10'}`}>
+                <Zap size={28} className={isEngineOn ? 'animate-pulse' : ''} />
              </div>
              <div className="drop-shadow-lg">
-                <h1 className="text-white font-black text-xl leading-none tracking-tighter">{selectedVehicle?.plate}</h1>
-                <div className="flex items-center gap-1.5 mt-1">
-                   <div className={`w-2 h-2 rounded-full ${isEngineOn ? 'bg-green-500 animate-pulse' : 'bg-slate-500'}`}></div>
-                   <p className="text-[11px] font-black uppercase text-slate-200 tracking-widest">{isEngineOn ? 'Motor Operante' : 'Standby'}</p>
+                <h1 className="text-white font-black text-2xl leading-none tracking-tighter">TELEMETRIA <span className="text-blue-400">PRO</span></h1>
+                <div className="flex items-center gap-2 mt-1.5">
+                   <div className="flex gap-0.5 items-end h-3">
+                      {[1,2,3,4,5].map(b => (
+                        <div key={b} className={`w-1 rounded-t-sm transition-all duration-300 ${telemetry.signalBars >= b ? 'bg-green-400' : 'bg-slate-700'}`} style={{ height: `${b * 20}%` }}></div>
+                      ))}
+                   </div>
+                   <p className="text-[10px] font-black uppercase text-slate-300 tracking-widest">
+                     {telemetry.signalBars >= 4 ? 'Sinal Forte' : telemetry.signalBars >= 2 ? 'Sinal Médio' : 'Procurando Satélites...'}
+                   </p>
                 </div>
              </div>
           </div>
           
-          <div className="flex flex-col gap-2 pointer-events-auto">
+          <div className="flex flex-col gap-3 pointer-events-auto">
              <button 
-                onClick={() => mapInstance.current?.flyTo([-15.653342, -55.988658], 18)} 
-                className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-900 shadow-xl active:scale-90 transition-transform"
+                onClick={() => mapInstance.current?.flyTo([coords.lat, coords.lng], 19, { animate: true, duration: 2 })} 
+                className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-slate-900 shadow-2xl active:scale-90 transition-transform"
              >
-                <LocateFixed size={24} />
+                <Crosshair size={28} />
              </button>
           </div>
        </div>
 
-       {/* MAPA FULLSCREEN */}
+       {/* MAPA PRINCIPAL */}
        <div className="flex-1 relative z-0">
-          <div ref={mapRef} className="w-full h-full grayscale-[0.2] brightness-[0.8] contrast-[1.1]"></div>
+          <div ref={mapRef} className="w-full h-full"></div>
           
-          {/* Status Bar Flutuante */}
-          <div className="absolute top-24 left-4 flex gap-2 z-[1000]">
-             <div className="bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2 border border-white/10">
-                <Signal size={12} className="text-green-500" />
-                <span className="text-[10px] font-bold text-white uppercase tracking-tighter">HD GPS</span>
+          <div className="absolute top-28 left-4 flex flex-col gap-2 z-[1000]">
+             <div className="bg-slate-900/90 backdrop-blur-xl px-4 py-2 rounded-2xl flex items-center gap-3 border border-white/10 shadow-2xl">
+                <Wifi size={16} className={isEngineOn ? "text-blue-400" : "text-slate-500"} />
+                <div className="flex flex-col">
+                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">HD Satélite</span>
+                   <span className="text-xs font-bold text-white tracking-tight">Cuiabá Gateway v2</span>
+                </div>
              </div>
-             <div className="bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2 border border-white/10">
-                <Activity size={12} className="text-blue-500" />
-                <span className="text-[10px] font-bold text-white uppercase tracking-tighter">TELEMETRIA ATIVA</span>
-             </div>
+             {accuracy && isEngineOn && (
+                <div className="bg-white/95 backdrop-blur-xl px-4 py-2 rounded-2xl flex items-center gap-3 border border-slate-200 shadow-2xl animate-fade-in">
+                   <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></div>
+                   <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Precisão</span>
+                      <span className="text-xs font-bold text-slate-900">{accuracy.toFixed(1)} metros</span>
+                   </div>
+                </div>
+             )}
           </div>
        </div>
 
-       {/* PAINEL INFERIOR (BOTTOM SHEET) */}
-       <div className={`absolute bottom-0 left-0 right-0 z-[2000] bg-white rounded-t-[40px] shadow-[0_-20px_60px_rgba(0,0,0,0.5)] transition-all duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${isExpanded ? 'translate-y-0' : 'translate-y-[calc(100%-100px)]'}`}>
+       {/* PAINEL DE TELEMETRIA (BOTTOM SHEET) */}
+       <div className={`absolute bottom-0 left-0 right-0 z-[2000] bg-white rounded-t-[44px] shadow-[0_-15px_60px_rgba(0,0,0,0.5)] transition-all duration-700 cubic-bezier(0.19, 1, 0.22, 1) ${isExpanded ? 'translate-y-0' : 'translate-y-[calc(100%-110px)]'}`}>
           
-          {/* BARRA DE ARRASTE */}
           <div 
             onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full pt-4 pb-6 flex flex-col items-center cursor-pointer"
+            className="w-full pt-5 pb-7 flex flex-col items-center cursor-pointer hover:bg-slate-50 transition-colors"
           >
-             <div className="w-16 h-1.5 bg-slate-200 rounded-full mb-2"></div>
-             {!isExpanded && <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ver Painel</span>}
+             <div className="w-20 h-1.5 bg-slate-200 rounded-full mb-2"></div>
+             {!isExpanded && <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] animate-pulse">Monitoramento Ativo</span>}
           </div>
 
-          <div className="px-8 pb-10 overflow-hidden">
+          <div className="px-8 pb-12 overflow-hidden">
              {!isEngineOn ? (
-               <div className="text-center py-6 animate-fade-in">
-                  <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-50">
-                     <Power size={40} className="text-slate-300" />
+               <div className="text-center py-8 animate-fade-in">
+                  <div className="w-24 h-24 bg-blue-50 rounded-[32px] flex items-center justify-center mx-auto mb-6 border-2 border-blue-100 shadow-inner">
+                     <LocateFixed size={48} className="text-blue-600" />
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Sistema Desligado</h2>
-                  <p className="text-slate-500 text-sm px-6 leading-relaxed mb-8">
-                    Aguardando partida do motor para iniciar o monitoramento em tempo real.
+                  <h2 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">Check-in de Viagem</h2>
+                  <p className="text-slate-500 text-sm px-10 leading-relaxed mb-10 font-medium">
+                    Sincronize com os satélites FCMO para monitorar sua velocidade e percurso com precisão militar.
                   </p>
                   
                   <button 
                      onClick={() => setIsEngineOn(true)}
-                     className="w-full bg-blue-600 active:bg-blue-800 text-white py-5 rounded-[22px] font-black text-lg shadow-xl shadow-blue-200 flex items-center justify-center gap-4 transition-all"
+                     className="w-full bg-slate-900 active:bg-black text-white py-6 rounded-[24px] font-black text-xl shadow-2xl shadow-slate-900/30 flex items-center justify-center gap-4 transition-all hover:scale-[1.02]"
                   >
-                     <Power size={24} /> LIGAR MOTOR
+                     <Navigation size={28} /> INICIAR LOG OPERACIONAL
                   </button>
                </div>
              ) : (
                <div className="animate-slide-up">
-                  {/* MÉTRICAS PRINCIPAIS (FIX DE SOBREPOSIÇÃO) */}
-                  <div className="grid grid-cols-2 gap-6 mb-8 border-b border-slate-100 pb-8">
-                     <div className="flex flex-col items-start border-r border-slate-100 pr-4">
-                        <p className="text-[11px] text-slate-400 font-black uppercase mb-1 tracking-widest">Velocidade</p>
+                  {/* DISPLAY DE VELOCIDADE REAL */}
+                  <div className="flex justify-between items-center mb-10 bg-slate-50 p-6 rounded-[32px] border border-slate-100 shadow-inner">
+                     <div className="flex flex-col">
+                        <p className="text-[11px] text-slate-400 font-black uppercase mb-1 tracking-[0.2em]">Real-Time Speed</p>
                         <div className="flex items-baseline">
-                           <span className="text-5xl font-black text-slate-900 tracking-tighter">00</span>
-                           <span className="text-sm text-slate-400 font-black ml-2">km/h</span>
+                           <span className="text-7xl font-black text-slate-900 tracking-tighter tabular-nums leading-none">
+                             {Math.round(telemetry.speed)}
+                           </span>
+                           <span className="text-lg text-slate-400 font-black ml-3 uppercase">km/h</span>
                         </div>
                      </div>
-                     <div className="flex flex-col items-start pl-4">
-                        <p className="text-[11px] text-slate-400 font-black uppercase mb-1 tracking-widest">Rotação</p>
-                        <div className="flex items-baseline">
-                           <span className="text-5xl font-black text-green-600 tracking-tighter">{Math.round(telemetry.rpm)}</span>
-                           <span className="text-sm text-slate-400 font-black ml-2">RPM</span>
+                     <div className="w-20 h-20 rounded-full border-[6px] border-slate-200 flex items-center justify-center relative">
+                        <div className="absolute inset-0 border-[6px] border-blue-500 rounded-full border-t-transparent animate-spin" style={{ animationDuration: '3s' }}></div>
+                        <Gauge size={32} className="text-slate-800" />
+                     </div>
+                  </div>
+
+                  {/* MÉTRICAS SECUNDÁRIAS */}
+                  <div className="grid grid-cols-2 gap-5 mb-8">
+                     <div className="bg-slate-900 p-5 rounded-[28px] shadow-xl flex items-center gap-4 border border-white/5">
+                        <div className="bg-white/10 text-white p-3 rounded-2xl"><Activity size={24} /></div>
+                        <div>
+                           <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Rotação</span>
+                           <p className="text-lg font-black text-white tracking-tighter">{Math.round(telemetry.rpm)} <span className="text-[10px] opacity-50">RPM</span></p>
+                        </div>
+                     </div>
+                     <div className="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm flex items-center gap-4">
+                        <div className="bg-blue-50 text-blue-600 p-3 rounded-2xl"><MapPin size={24} /></div>
+                        <div>
+                           <span className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Percurso</span>
+                           <p className="text-lg font-black text-slate-800 tracking-tighter">{tripDistance.toFixed(2)} <span className="text-[10px] opacity-50">KM</span></p>
                         </div>
                      </div>
                   </div>
 
-                  {/* MINI CARDS DE INFO */}
-                  <div className="grid grid-cols-2 gap-4 mb-8">
-                     <div className="bg-slate-50 p-4 rounded-[22px] border border-slate-100 flex items-center gap-3">
-                        <div className="bg-orange-100 text-orange-600 p-2.5 rounded-xl"><Thermometer size={20} /></div>
-                        <div>
-                           <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Motor</span>
-                           <p className="text-base font-black text-slate-800 tracking-tighter">{telemetry.temp.toFixed(1)}°C</p>
-                        </div>
-                     </div>
-                     <div className="bg-slate-50 p-4 rounded-[22px] border border-slate-100 flex items-center gap-3">
-                        <div className="bg-blue-100 text-blue-600 p-2.5 rounded-xl"><ShieldCheck size={20} /></div>
-                        <div>
-                           <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Sistema</span>
-                           <p className="text-base font-black text-slate-800 tracking-tighter">OK</p>
-                        </div>
-                     </div>
-                  </div>
-
-                  {/* LOCALIZAÇÃO ATUAL */}
-                  <div className="bg-slate-900 text-white p-4 rounded-[22px] mb-8 flex items-center gap-4 shadow-lg">
-                     <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center shrink-0">
-                        <MapPin size={20} className="text-blue-400" />
+                  {/* COORDENADAS E STATUS */}
+                  <div className="bg-blue-600 text-white p-6 rounded-[32px] mb-8 flex items-center gap-5 shadow-2xl shadow-blue-500/20">
+                     <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 border border-white/20 backdrop-blur-md">
+                        <Wifi size={28} className="animate-pulse" />
                      </div>
                      <div className="flex-1 min-w-0">
-                        <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Posição Fixa</span>
-                        <p className="text-sm font-bold truncate">Rodovia BR-163 - Cuiabá, MT</p>
+                        <div className="flex items-center gap-2 mb-1.5">
+                           <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                           <span className="block text-[10px] font-black text-blue-100 uppercase tracking-widest">Ativo em Cuiabá, MT</span>
+                        </div>
+                        <p className="text-[11px] font-mono text-blue-100 opacity-90 truncate leading-none">LAT: {coords.lat.toFixed(8)}</p>
+                        <p className="text-[11px] font-mono text-blue-100 opacity-90 truncate mt-1 leading-none">LNG: {coords.lng.toFixed(8)}</p>
                      </div>
                   </div>
 
                   <button 
                      onClick={() => setIsEngineOn(false)}
-                     className="w-full bg-red-50 active:bg-red-100 text-red-600 py-4 rounded-[20px] font-black text-sm border border-red-100 flex items-center justify-center gap-2 transition-colors active:scale-95"
+                     className="w-full bg-red-50 active:bg-red-100 text-red-600 py-5 rounded-[24px] font-black text-sm border border-red-100 flex items-center justify-center gap-3 transition-all"
                   >
-                     <Power size={18} /> DESLIGAR CAMINHÃO
+                     <Power size={20} /> ENCERRAR MONITORAMENTO
                   </button>
                </div>
              )}
@@ -247,11 +377,12 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles }) =>
        </div>
 
        <style>{`
-          @keyframes pulse { 0% { transform: scale(0.9); opacity: 1; } 70% { transform: scale(1.8); opacity: 0; } 100% { transform: scale(0.9); opacity: 0; } }
-          .animate-slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
-          @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-          .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+          @keyframes sonar { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(2.5); opacity: 0; } }
+          .animate-slide-up { animation: slideUp 0.8s cubic-bezier(0.19, 1, 0.22, 1); }
+          @keyframes slideUp { from { transform: translateY(60px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+          .animate-fade-in { animation: fadeIn 0.5s ease-out; }
           @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+          .leaflet-container { background: #f8fafc !important; }
        `}</style>
     </div>
   );

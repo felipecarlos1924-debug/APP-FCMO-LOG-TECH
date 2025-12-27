@@ -37,7 +37,6 @@ export default function App() {
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
-  // States
   const [users, setUsers] = useStickyState<User[]>(MOCK_USERS, 'fcmo_users');
   const [branches, setBranches] = useStickyState<Branch[]>(MOCK_BRANCHES, 'fcmo_branches');
   const [vehicles, setVehicles] = useStickyState<Vehicle[]>(MOCK_VEHICLES, 'fcmo_vehicles');
@@ -67,47 +66,64 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
-      {/* Sidebar Desktop e Menu Mobile */}
-      <div className={`fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm md:hidden transition-opacity ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setSidebarOpen(false)}></div>
+      {/* Overlay do Menu Mobile */}
+      <div 
+        className={`fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm md:hidden transition-opacity duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
+        onClick={() => setSidebarOpen(false)}
+      ></div>
       
+      {/* Sidebar / Menu lateral (Drawer) */}
       <div className={`fixed md:relative inset-y-0 left-0 z-[110] transform transition-transform duration-300 ease-in-out md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <Sidebar currentView={currentView} onChangeView={(v) => { setCurrentView(v); setSidebarOpen(false); }} onLogout={() => setCurrentUser(null)} currentUser={currentUser} />
+        <Sidebar 
+          currentView={currentView} 
+          onChangeView={(v) => { setCurrentView(v); setSidebarOpen(false); }} 
+          onLogout={() => setCurrentUser(null)} 
+          currentUser={currentUser}
+          onClose={() => setSidebarOpen(false)}
+        />
       </div>
 
       <main className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Header Responsivo */}
-        <header className="h-16 md:h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shadow-sm shrink-0 z-[90]">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-slate-600 active:bg-slate-100 rounded-xl transition-colors">
-               <Menu size={26} />
+        {/* Header Responsivo Moderno */}
+        <header className="h-16 md:h-20 bg-white/80 backdrop-blur-xl border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shadow-sm shrink-0 z-[90]">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setSidebarOpen(true)} 
+              className="md:hidden p-2.5 text-slate-600 active:bg-slate-100 rounded-2xl transition-all shadow-sm border border-slate-100"
+              aria-label="Abrir Menu"
+            >
+               <Menu size={24} />
             </button>
+            <div className="md:hidden">
+              <h1 className="text-xl font-black tracking-tighter text-slate-900 leading-none">FCMO<span className="text-blue-600">LOG</span></h1>
+            </div>
             <div className="hidden md:block relative w-64 lg:w-96 group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500" size={18} />
-              <input type="text" placeholder="Pesquisar frota..." className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+              <input type="text" placeholder="Pesquisar frota..." className="w-full pl-12 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all" />
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3 mr-2">
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="flex items-center gap-2 md:gap-3 mr-1">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-black text-slate-900 leading-none tracking-tighter">{currentUser.name}</p>
-                <p className="text-[10px] text-blue-500 font-black uppercase mt-1 tracking-widest">{currentUser.role}</p>
+                <p className="text-sm font-black text-slate-900 leading-none tracking-tighter truncate max-w-[120px]">{currentUser.name}</p>
+                <p className="text-[10px] text-blue-500 font-black uppercase mt-1 tracking-widest leading-none">{currentUser.role}</p>
               </div>
-              <div className="w-10 h-10 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden shadow-sm">
-                <img src={currentUser.avatar} alt="P" className="w-full h-full object-cover" />
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-sm shrink-0 active:scale-95 transition-transform p-0.5">
+                <img src={currentUser.avatar} alt="Perfil" className="w-full h-full object-cover rounded-[14px]" />
               </div>
             </div>
             
-            <button className="text-slate-500 hover:text-blue-600 relative p-2 rounded-xl active:bg-slate-100 transition-colors">
+            <button className="text-slate-400 hover:text-blue-600 relative p-2.5 rounded-2xl active:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
               <Bell size={22} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+              <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white shadow-sm"></span>
             </button>
           </div>
         </header>
 
-        {/* Área de Conteúdo */}
-        <div className="flex-1 overflow-auto bg-slate-50 p-4 md:p-8 scrollbar-hide">
-          <div className="max-w-7xl mx-auto h-full">
+        {/* Área de Conteúdo Adaptável */}
+        <div className="flex-1 overflow-auto bg-slate-50 scrollbar-hide">
+          <div className="max-w-7xl mx-auto p-4 md:p-8">
             {renderContent()}
           </div>
         </div>

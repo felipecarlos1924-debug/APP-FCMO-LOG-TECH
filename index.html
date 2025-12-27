@@ -25,8 +25,20 @@
       }
     </script>
     <style>
-      body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; position: fixed; width: 100%; font-family: 'Roboto', sans-serif; background: #0f172a; }
+      body, html { 
+        margin: 0; 
+        padding: 0; 
+        height: 100%; 
+        overflow: hidden; 
+        position: fixed; 
+        width: 100%; 
+        font-family: 'Roboto', sans-serif; 
+        background: #0f172a;
+        color: #f1f5f9;
+        -webkit-font-smoothing: antialiased;
+      }
       #root { height: 100%; }
+      
       .leaflet-pane { z-index: 0 !important; }
       .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
       
@@ -48,11 +60,23 @@
         margin-bottom: 20px;
       }
       @keyframes spin { to { transform: rotate(360deg); } }
-      .custom-vehicle-marker { background: none !important; border: none !important; }
       
-      /* Otimização de Toque Android */
-      button, a { -webkit-tap-highlight-color: transparent; }
-      input { font-size: 16px !important; }
+      button, a, input, select { 
+        -webkit-tap-highlight-color: transparent; 
+        touch-action: manipulation;
+      }
+      
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
     </style>
     <script type="importmap">
 {
@@ -73,12 +97,12 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700;900&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-slate-900 text-slate-100 antialiased overflow-hidden">
+  <body class="bg-slate-900 antialiased overflow-hidden">
     <div id="root">
       <div id="loading-screen">
         <div class="spinner"></div>
         <div style="font-weight: 900; font-size: 1.8rem; letter-spacing: -1px;">FCMO<span style="color: #3b82f6;">LOG</span></div>
-        <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 10px; letter-spacing: 3px; font-weight: bold;">PREPARANDO TELEMETRIA...</p>
+        <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 10px; letter-spacing: 3px; font-weight: bold;">CONECTANDO GPS...</p>
       </div>
     </div>
     <script type="module" src="./index.tsx"></script>
