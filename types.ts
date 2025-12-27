@@ -8,21 +8,20 @@ export enum VehicleStatus {
 
 export type UserRole = 'OWNER' | 'MANAGER' | 'DRIVER' | 'MECHANIC';
 
-// Granular Permissions
 export type Permission = 
   | 'VIEW_DASHBOARD'
   | 'VIEW_FINANCIAL'
-  | 'MANAGE_FLEET'      // Create/Edit vehicles
+  | 'MANAGE_FLEET'
   | 'VIEW_FLEET'
-  | 'MANAGE_FUEL'       // Add logs
-  | 'APPROVE_FUEL'      // Approve logs
+  | 'MANAGE_FUEL'
+  | 'APPROVE_FUEL'
   | 'MANAGE_MAINTENANCE'
   | 'APPROVE_MAINTENANCE'
   | 'MANAGE_TIRES'
   | 'MANAGE_USERS'
-  | 'VIEW_HISTORY'      // Audit Log
-  | 'MANAGE_BRANCHES'   // Manage subsidiaries
-  | 'VIEW_TELEMETRY';    // GPS tracking
+  | 'VIEW_HISTORY'
+  | 'MANAGE_BRANCHES'
+  | 'VIEW_TELEMETRY';
 
 export interface Branch {
   id: string;
@@ -42,7 +41,16 @@ export interface User {
   isActive: boolean;
   verificationCode?: string;
   permissions: Permission[];
-  branchId?: string; // Link user to a branch
+  branchId?: string;
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'alert' | 'info' | 'success';
+  timestamp: string;
+  read: boolean;
 }
 
 export interface AuditLogEntry {
@@ -64,9 +72,7 @@ export interface Vehicle {
   mileage: number;
   lastMaintenance: string;
   image: string;
-  branchId?: string; // Link vehicle to a branch
-  
-  // Telemetry Extensions
+  branchId?: string;
   currentSpeed?: number;
   rpm?: number;
   fuelLevel?: number;
@@ -149,7 +155,7 @@ export type DocumentType = 'CNH' | 'MOPP' | 'IPVA' | 'LICENCIAMENTO' | 'SEGURO_C
 export interface FleetDocument {
   id: string;
   type: DocumentType;
-  entityId: string; // Vehicle ID or User ID
+  entityId: string;
   entityType: 'VEHICLE' | 'DRIVER';
   number: string;
   issueDate: string;
@@ -167,7 +173,7 @@ export interface FinancialTransaction {
   date: string;
   status: 'PAID' | 'PENDING';
   paymentMethod: 'PIX' | 'BOLETO' | 'CREDIT' | 'TRANSFER';
-  documentNumber?: string; // Nota Fiscal
+  documentNumber?: string;
 }
 
-export type ViewState = 'dashboard' | 'fleet' | 'fuel' | 'maintenance' | 'tires' | 'reports' | 'employees' | 'settings' | 'history' | 'telemetry' | 'techdocs';
+export type ViewState = 'dashboard' | 'fleet' | 'fuel' | 'maintenance' | 'tires' | 'reports' | 'employees' | 'settings' | 'history' | 'telemetry';

@@ -1,10 +1,38 @@
-import { Vehicle, VehicleStatus, FuelLog, MaintenanceOrder, DriverProfile, Tire, Checklist, User, AuditLogEntry, Permission, Branch, FleetDocument, FinancialTransaction } from './types';
+
+import { Vehicle, VehicleStatus, User, AppNotification, Branch, AuditLogEntry, Permission } from './types';
 
 const ALL_PERMISSIONS: Permission[] = [
   'VIEW_DASHBOARD', 'VIEW_FINANCIAL', 'MANAGE_FLEET', 'VIEW_FLEET', 
   'MANAGE_FUEL', 'APPROVE_FUEL', 'MANAGE_MAINTENANCE', 'APPROVE_MAINTENANCE', 
   'MANAGE_TIRES', 'MANAGE_USERS', 'VIEW_HISTORY', 'MANAGE_BRANCHES',
   'VIEW_TELEMETRY'
+];
+
+export const MOCK_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: '1',
+    title: 'Pneu Crítico',
+    message: 'O veículo NMT-5678 possui um pneu abaixo de 3mm.',
+    type: 'alert',
+    timestamp: new Date().toISOString(),
+    read: false
+  },
+  {
+    id: '2',
+    title: 'Abastecimento Pendente',
+    message: 'Novo lançamento de R$ 2.450,00 aguardando aprovação.',
+    type: 'info',
+    timestamp: new Date(Date.now() - 3600000).toISOString(),
+    read: false
+  },
+  {
+    id: '3',
+    title: 'Manutenção Concluída',
+    message: 'OS #442 do Volvo FH 540 foi finalizada com sucesso.',
+    type: 'success',
+    timestamp: new Date(Date.now() - 86400000).toISOString(),
+    read: true
+  }
 ];
 
 export const MOCK_BRANCHES: Branch[] = [
@@ -91,7 +119,6 @@ export const MOCK_VEHICLES: Vehicle[] = [
     rpm: 0,
     fuelLevel: 88,
     engineTemp: 25,
-    // LOCALIZAÇÃO EXATA SOLICITADA
     latitude: -15.653342,
     longitude: -55.988658,
     isLoaded: true,
@@ -99,10 +126,10 @@ export const MOCK_VEHICLES: Vehicle[] = [
   }
 ];
 
-export const MOCK_FUEL_LOGS: FuelLog[] = [];
-export const MOCK_MAINTENANCE: MaintenanceOrder[] = [];
-export const MOCK_CHECKLISTS: Checklist[] = [];
-export const MOCK_DRIVERS: DriverProfile[] = [];
-export const MOCK_TIRES: Tire[] = [];
-export const MOCK_FINANCIAL: FinancialTransaction[] = [];
-export const MOCK_DOCUMENTS: FleetDocument[] = [];
+export const MOCK_FUEL_LOGS = [];
+export const MOCK_MAINTENANCE = [];
+export const MOCK_CHECKLISTS = [];
+export const MOCK_DRIVERS = [];
+export const MOCK_TIRES = [];
+export const MOCK_FINANCIAL = [];
+export const MOCK_DOCUMENTS = [];
