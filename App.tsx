@@ -48,6 +48,19 @@ export default function App() {
   const [auditLogs, setAuditLogs] = useStickyState<AuditLogEntry[]>(MOCK_AUDIT_LOGS, 'fcmo_audit_logs');
   const [notifications, setNotifications] = useStickyState<AppNotification[]>(MOCK_NOTIFICATIONS, 'fcmo_notifications');
 
+  // CRITICAL: Session Synchronizer
+  // Este efeito garante que se as permissões ou dados do usuário logado mudarem na lista global, 
+  // a sessão ativa seja atualizada imediatamente sem precisar deslogar.
+  useEffect(() => {
+    if (currentUser) {
+      const updatedProfile = users.find(u => u.id === currentUser.id);
+      if (updatedProfile && JSON.stringify(updatedProfile) !== JSON.stringify(currentUser)) {
+        console.log("FCMO LOG: Sincronizando dados da sessão com perfil atualizado...");
+        setCurrentUser(updatedProfile);
+      }
+    }
+  }, [users, currentUser?.id]);
+
   const unreadCount = notifications.filter(n => !n.read).length;
   const notificationRef = useRef<HTMLDivElement>(null);
 
@@ -97,7 +110,7 @@ export default function App() {
         <Sidebar 
           currentView={currentView} 
           onChangeView={(v) => { setCurrentView(v); setSidebarOpen(false); }} 
-          onLogout={() => setCurrentUser(null)} 
+          onLogout={() => { window.localStorage.removeItem('fcmo_session_user'); setCurrentUser(null); }} 
           currentUser={currentUser}
           onClose={() => setSidebarOpen(false)}
         />

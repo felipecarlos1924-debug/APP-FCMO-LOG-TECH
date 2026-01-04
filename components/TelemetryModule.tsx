@@ -19,7 +19,7 @@ interface TelemetryModuleProps {
   currentUser: User;
 }
 
-const SMOOTHING_FACTOR = 0.4; // Um pouco mais rápido para diminuir atraso
+const SMOOTHING_FACTOR = 0.4;
 
 export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles, currentUser }) => {
   const [isEngineOn, setIsEngineOn] = useState(false); 
@@ -32,7 +32,6 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles, curr
   const [localAccuracy, setLocalAccuracy] = useState<number | null>(null);
   const [isDataStable, setIsDataStable] = useState(true);
   
-  // Estado das posições - garantindo que o tipo está correto
   const [fleetPositions, setFleetPositions] = useState<Record<string, { lat: number, lng: number, speed: number, heading: number, accuracy: number }>>({});
   
   const mapRef = useRef<HTMLDivElement>(null);
@@ -40,18 +39,15 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles, curr
   const tileLayerRef = useRef<any>(null);
   const markersRef = useRef<Record<string, any>>({});
   const watchIdRef = useRef<number | null>(null);
-  
-  // Referência para a posição suavizada (inicia em zero para detectar o primeiro ponto)
   const smoothedPos = useRef<{lat: number, lng: number} | null>(null);
 
-  // Busca robusta da placa do motorista logado
+  // Busca vinculada agora reage a mudanças no currentUser.name e na lista de veículos
   const myVehicle = useMemo(() => {
     return vehicles.find(v => 
       v.driver.trim().toLowerCase() === currentUser.name.trim().toLowerCase()
     );
-  }, [vehicles, currentUser]);
+  }, [vehicles, currentUser.name]);
 
-  // Inicializa a frota
   useEffect(() => {
     const initial: Record<string, any> = {};
     vehicles.forEach(v => {
@@ -86,14 +82,13 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles, curr
     tileLayerRef.current = window.L.tileLayer(url).addTo(mapInstance.current);
   }, [mapType]);
 
-  // CONTROLE DO GPS REAL
   useEffect(() => {
     if (isEngineOn && "geolocation" in navigator) {
       setGpsError(null);
       
       const geoOptions = { 
         enableHighAccuracy: true, 
-        maximumAge: 0, // Força leitura fresca
+        maximumAge: 0, 
         timeout: 10000 
       };
 
@@ -105,14 +100,12 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles, curr
           const speedKmh = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
           const heading = pos.coords.heading || 0;
 
-          // Filtro de precisão (10m em movimento, 5m parado)
           if (accuracy > (speedKmh > 2 ? 15 : 8)) {
             setIsDataStable(false);
             setLocalAccuracy(accuracy);
             return;
           }
 
-          // Se for o primeiro ponto, não suaviza (pula direto para a posição real)
           let newLat, newLng;
           if (!smoothedPos.current) {
             newLat = rawLat;
@@ -126,14 +119,12 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles, curr
           setIsDataStable(true);
           setLocalAccuracy(accuracy);
 
-          // Se eu tenho um caminhão, movo ele. Se não, atualizo minha posição isolada.
           if (myVehicle) {
             setFleetPositions(prev => ({
               ...prev,
               [myVehicle.id]: { lat: newLat, lng: newLng, speed: speedKmh, heading, accuracy }
             }));
           } else {
-             // Motorista sem placa associada aparece como "Ponto do Usuário"
              setFleetPositions(prev => ({
                ...prev,
                'local-driver': { lat: newLat, lng: newLng, speed: speedKmh, heading, accuracy }
@@ -160,17 +151,24 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles, curr
     return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
   }, [isEngineOn, followMode, myVehicle]);
 
-  // RENDERIZAÇÃO DE TODOS OS PONTOS
   useEffect(() => {
     if (!mapInstance.current || !window.L) return;
     
+    // Limpa marcadores obsoletos que podem ter ficado de veículos removidos ou IDs alterados
+    const currentIds = Object.keys(fleetPositions);
+    Object.keys(markersRef.current).forEach(id => {
+      if (!currentIds.includes(id)) {
+        mapInstance.current.removeLayer(markersRef.current[id]);
+        delete markersRef.current[id];
+      }
+    });
+
     (Object.entries(fleetPositions) as [string, any][]).forEach(([id, pos]) => {
       const vehicle = vehicles.find(v => v.id === id);
       const isMe = id === myVehicle?.id || id === 'local-driver';
       
       let iconHtml = '';
       if (id === 'local-driver') {
-        // Marcador para quando o motorista não tem caminhão associado
         iconHtml = `
           <div class="user-standalone">
             <div class="user-pulse"></div>
@@ -196,7 +194,7 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles, curr
         if (markersRef.current[id]) {
           markersRef.current[id].setLatLng([pos.lat, pos.lng]);
           markersRef.current[id].setIcon(icon);
-          if (isMe) markersRef.current[id].setZIndexOffset(1000); // Garante que você está sempre por cima
+          if (isMe) markersRef.current[id].setZIndexOffset(1000);
         } else {
           markersRef.current[id] = window.L.marker([pos.lat, pos.lng], { icon }).addTo(mapInstance.current);
         }
@@ -206,8 +204,6 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles, curr
 
   return (
     <div className="flex flex-col h-full w-full relative bg-slate-900 overflow-hidden font-sans">
-       
-       {/* STATUS DO GPS */}
        <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-between items-start pointer-events-none">
           <div className="flex flex-col gap-2 pointer-events-auto">
              <div className="bg-slate-950/90 backdrop-blur-xl px-5 py-4 rounded-[28px] shadow-2xl border border-white/10 flex items-center gap-4">
@@ -243,7 +239,6 @@ export const TelemetryModule: React.FC<TelemetryModuleProps> = ({ vehicles, curr
           <div ref={mapRef} className="w-full h-full"></div>
        </div>
 
-       {/* HUD PRINCIPAL */}
        <div className={`absolute bottom-6 left-6 right-6 z-[2000] flex justify-center pointer-events-none transition-all duration-700 ${isHudMinimized ? 'translate-y-[calc(100%-20px)]' : 'translate-y-0'}`}>
           <div className="bg-slate-950/95 backdrop-blur-2xl px-8 py-7 rounded-[40px] shadow-2xl border border-white/10 pointer-events-auto flex flex-col items-center gap-6 max-w-4xl w-full relative">
               <button onClick={() => setIsHudMinimized(!isHudMinimized)} className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-white rounded-full flex items-center justify-center text-slate-400 shadow-xl border border-slate-100 transition-all active:scale-90">{isHudMinimized ? <ChevronUp size={24} /> : <ChevronDown size={24} />}</button>
