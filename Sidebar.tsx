@@ -1,7 +1,15 @@
 
 import React from 'react';
 import { LayoutDashboard, Truck, Droplets, Wrench, Disc, Settings, LogOut, History, FileBarChart, Users, X } from 'lucide-react';
-import { ViewState, User } from './types';
+import { ViewState, User, UserRole } from './types';
+
+// Mapeamento de Cargos para Português
+const ROLE_LABELS: Record<UserRole, string> = {
+  OWNER: 'DONO',
+  MANAGER: 'GESTOR',
+  DRIVER: 'MOTORISTA',
+  MECHANIC: 'MECÂNICO'
+};
 
 interface SidebarProps {
   currentView: ViewState;
@@ -32,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, onL
           <h1 className="text-2xl font-black tracking-tighter text-blue-500 leading-none">
             FCMO<span className="text-white">LOG</span>
           </h1>
-          <p className="text-[10px] text-slate-500 mt-2 uppercase tracking-[0.3em] font-black">Enterprise Solution</p>
+          <p className="text-[10px] text-slate-500 mt-2 uppercase tracking-[0.3em] font-black">Solução Empresarial</p>
         </div>
         {onClose && (
           <button onClick={onClose} className="md:hidden p-2 text-slate-400 hover:text-white transition-colors">
@@ -68,6 +76,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, onL
           })}
         </ul>
       </nav>
+
+      {/* ÁREA DE PERFIL NA SIDEBAR COM CARGO EM PORTUGUÊS */}
+      <div className="px-6 pb-4">
+         <div className="bg-white/5 rounded-3xl p-4 flex items-center gap-3 border border-white/5">
+            <img src={currentUser.avatar} className="w-10 h-10 rounded-xl border border-white/10" alt="Avatar" />
+            <div>
+               <p className="text-xs font-black uppercase tracking-tight leading-none">{currentUser.name}</p>
+               <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mt-1">{ROLE_LABELS[currentUser.role]}</p>
+            </div>
+         </div>
+      </div>
 
       <div className="p-6 border-t border-white/5 space-y-3 bg-[#080e1a]">
         <button 
